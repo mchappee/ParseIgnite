@@ -8,11 +8,11 @@
     $wowlogfile = "uploads/wowlog.log";
   }
 
-  $wowlog = trimlog (file ($wowlogfile));
+  $spellarray = Array (10207,10199,25306,18809,13021,10216);
+  $wowlog = trimlog (file ($wowlogfile), $spellarray);
   $ignite = Array ();
   $igniteflag = false;
   $iscrit = false;
-  $spellarray = Array (10207,10199,25306,18809,13021,10216);
   $ignitearray = Array ();
   $level = 0;
   $fastforward = false;
@@ -20,6 +20,7 @@
   $c45 = 0;
   $gnd = 0;
   $gdl = 0;
+  $ctk = 0;
 
   foreach ($wowlog as $line) {
     $tstamparray = explode (" ", $line);
@@ -27,28 +28,31 @@
     $larraysp = substr ($line, 19);
     $larraycm = explode (",", $larraysp);
 
-    if ($larraycm[0] == "ENCOUNTER_START")
-      $encounterflag = true;
+    if ($larraycm[0] == "ENCOUNTER_START") {
+      if (encounter_ends ($larraycm[1], $tstamp))
+        $encounterflag = true;
+        $boss = $larraycm[2];
+      //else
+      //  print "No ENCOUNTER_END for $larraycm[1]\n";
+    }
     if ($larraycm[0] == "ENCOUNTER_END")
       $encounterflag = false;
 
     if (!$fastforward) {
       if ($encounterflag) {
-        if ($larraycm[0] == "SPELL_DAMAGE" && in_array ($larraycm[9], $spellarray) && $larraycm[35] == "1") {
-          //print_r ($larraycm);
+        if ($larraycm[0] == "SPELL_DAMAGE" && in_array ($larraycm[9], $spellarray) && $larraycm[35] == "1" && $larraycm[6] == $boss) {
           if (checkforfive ($tstamp, $larraycm[12])) {
             $ignite = getignite ($larraycm, $tstamp, $spellarray);
             array_push ($ignitearray, $ignite);
-            //print_r ($ignite);
             $fastforward = true;
             $mobid = $larraycm[5];
           }
         }
       }
     } else {
-      if ($larraycm[0] == "UNIT_DIED" && $larraycm[5] == $mobid)
+      if ($larraycm[0] == "UNIT_DIED" && $larraycm[6] == $boss)
         $fastforward = false;
-      if ($larraycm[0] == "SPELL_AURA_REMOVED" && $larraycm[9] == 12654 && $larraycm[5] == $mobid)
+      if ($larraycm[0] == "SPELL_AURA_REMOVED" && $larraycm[9] == 12654 && $larraycm[6] == $boss)
         $fastforward = false;
     }
   }
@@ -61,7 +65,7 @@
   foreach ($ignitearray as $igniteobj) {
     fputs ($f, "Boss: " . $igniteobj->mob . "\n");
     fputs ($f, "Ignite Owner: " . $igniteobj->owner . "\n");
-    fputs ($f, "Tick: " . $igniteobj->tick . " per 2s\n");
+    fputs ($f, "Tick Sampling: " . implode (",", $igniteobj->tick) . "\n");
     fputs ($f, "Contributors:\n");
     foreach ($igniteobj->contributions as $contrib) {
       fputs ($f, $contrib->contributor . "\t\t" . $contrib->spell . "\t\t" . $contrib->damage . "\n");
@@ -76,6 +80,7 @@
   print "GND = " . $GLOBALS["gnd"] . "\n";
   print "GDL = " . $GLOBALS["gdl"] . "\n";
   print "C45 = " . $GLOBALS["c45"] . "\n";
+  print "CTK = " . $GLOBALS["ctk"] . "\n";
 
   print "</pre>\n";
   include ("footer.html");
@@ -85,9 +90,9 @@
 
   }
 
-  function trimlog ($wowlog) {
+  function trimlog ($wowlog, $spellarray) {
     $trimlog = Array ();
-    $headers = Array ("SPELL_DAMAGE", "SPELL_AURA_APPLIED", "SPELL_AURA_APPLIED_DOSE", "SPELL_AURA_REMOVED", "UNIT_DIED", "ENCOUNTER_START", "ENCOUNTER_END");
+    $headers = Array ("UNIT_DIED", "ENCOUNTER_START", "ENCOUNTER_END");
 
     foreach ($wowlog as $line) {
       $tstamparray = explode (" ", $line);
@@ -97,8 +102,36 @@
 
       if (in_array ($larraycm[0], $headers))
         array_push ($trimlog, $line);
-    }
 
+      switch ($larraycm[0]) {
+        case "SPELL_DAMAGE":
+          if (in_array ($larraycm[9], $spellarray) && $larraycm[35] == "1")
+            array_push ($trimlog, $line);
+        break;
+
+        case "SPELL_AURA_APPLIED":
+          if ($larraycm[9] == 12654)
+            array_push ($trimlog, $line);
+        break;
+
+        case "SPELL_AURA_REMOVED":
+          if ($larraycm[9] == 12654)
+            array_push ($trimlog, $line);
+        break;
+
+        case "SPELL_AURA_APPLIED_DOSE":
+          if ($larraycm[9] == 12654)
+            array_push ($trimlog, $line);
+        break;
+        case "SPELL_PERIODIC_DAMAGE":
+          if ($larraycm[9] == 12654)
+            array_push ($trimlog, $line);
+        break;
+
+      }
+    }
+    //print_r ($trimlog);
+    //die ();
     return $trimlog;
   }
 
@@ -111,11 +144,14 @@
     $ignite->owner = $larray[2];
 
     while ($level != 5) {
-      //print "$larray[12], $tstamp, $larray[1]\n";
-      $ret = getdebufflevel ($larray[12], $tstamp, $larray[1]);
+      //print $tstamp . "\n";
+      $ret = getdebufflevel ($ignite->mobid, $tstamp, $larray[1]);
       $level = $ret[0];
-      //print $level . " level\n";
-      //$tstamp = incstamp ($ret[1]);
+      //print "level = $level\n";
+      if ($level == 5) {
+        $ticks = calculateticks ($tstamp, $larray);
+        $ignite->tick = $ticks;
+      }
 
       $ignitecontrib = new IgniteContrib;
       $ignitecontrib->contributor = $larray[2];
@@ -125,35 +161,59 @@
       array_push ($ignite->contributions, $ignitecontrib);
 
       $tstamp = advancelog ($ret[1]);
-      $ret = getnewdamagelog ($tstamp, $spellarray);
-      
+
+      $ret = getnewdamagelog ($tstamp, $spellarray, $ignite->mobid);
       $larray = $ret[0];
+      //$tstamp = $ret[1];
+      //print "----\n";
       //print_r ($larray);
-      //print $tstamp . " tstamp\n";
     }
 
-    $ignite = calculateticks ($ignite);
     return $ignite;
   }
 
-  function calculateticks ($ignite) {
-    $total = 0;
-    foreach ($ignite->contributions as $i) {
-      $total = $total + $i->damage;
+  function calculateticks ($tstamp, $larray) {
+    $t1 = microtime (true);
+    $mobid = $larray[5];
+    $ticks = Array ();
+
+    $tstampflag = false;
+    foreach ($GLOBALS["wowlog"] as $line) {
+      $larraysp = substr ($line, 19);
+      $larraycm = explode (",", $larraysp);
+      $tstamparray = explode (" ", $line);
+      $newtstamp = $tstamparray[0] . " " . $tstamparray[1];
+
+      if ($tstampflag) {
+        if ($larraycm[0] == "UNIT_DIED" && $larraycm[5] == $mobid){
+          $t2 = microtime (true);
+          $GLOBALS["ctk"] = $GLOBALS["ctk"] + ($t2 - $t1);
+          array_push ($ticks, 0);
+          array_push ($ticks, 0);;
+        }
+        if ($larraycm[0] == "SPELL_PERIODIC_DAMAGE" && $larraycm[9] == 12654 && $larraycm[5] == $mobid) {
+          $t2 = microtime (true);
+          $GLOBALS["ctk"] = $GLOBALS["ctk"] + ($t2 - $t1);
+          array_push ($ticks, $larraycm[28]);
+        }
+      }
+      if ($newtstamp == $tstamp)
+        $tstampflag = true;
+      if (count ($ticks) == 4)
+        return $ticks;
     }
-    $ignite->tick = ($total * .4) / 2;
-    return $ignite;
+    $t2 = microtime (true);
+    $GLOBALS["ctk"] = $GLOBALS["ctk"] + ($t2 - $t1);
+    return $ticks;
   }
 
   function advancelog ($tstamp) {
-    //$wowlog = file ($GLOBALS["wowlogfile"]);
     $tstampflag = false;
     foreach ($GLOBALS["wowlog"] as $line) {
       $tstamparray = explode (" ", $line);
       $newtstamp = $tstamparray[0] . " " . $tstamparray[1];
 
       if ($tstampflag) {
-        //print "advance comparing --$newtstamp-- to --$tstamp--\n";
         if ($tstamp != $newtstamp)
           return $newtstamp;
       }
@@ -163,32 +223,56 @@
     return $tstamp;
   }
 
-  function getnewdamagelog ($tstamp, $spellarray) {
-    $t1 = microtime (true);
-    //$wowlog = file ($GLOBALS["wowlogfile"]);
+  function encounter_ends ($encid, $tstamp) {
     $tstampflag = false;
     foreach ($GLOBALS["wowlog"] as $line) {
       $tstamparray = explode (" ", $line);
       $newtstamp = $tstamparray[0] . " " . $tstamparray[1];
 
       if ($tstampflag) {
-        //print "gnd comparing --$newtstamp-- to --$tstamp--\n";
         $larraysp = substr ($line, 19);
         $larraycm = explode (",", $larraysp);
-        if ($larraycm[0] == "SPELL_DAMAGE" && in_array ($larraycm[9], $spellarray) && $larraycm[35] == "1") {
-          $t2 = microtime (true);
-          $GLOBALS["gnd"] = $GLOBALS["gnd"] + ($t2 - $t1);
-          return Array ($larraycm, $newtstamp);
+        if ($larraycm[0] == "ENCOUNTER_END" && $larraycm[1] == $encid) {
+          return true;
+        }
+        if ($larraycm[0] == "ENCOUNTER_START") {
+          return false;
         }
       }
       if ($newtstamp == $tstamp)
         $tstampflag = true;
     }
+    return true;
+  }
+
+  function getnewdamagelog ($tstamp, $spellarray, $mobid) {
+    $t1 = microtime (true);
+    $tstampflag = false;
+    //print "Stamp: $tstamp\n";
+    foreach ($GLOBALS["wowlog"] as $line) {
+      $tstamparray = explode (" ", $line);
+      $newtstamp = $tstamparray[0] . " " . $tstamparray[1];
+      if ($newtstamp == $tstamp)
+        $tstampflag = true;
+
+      if ($tstampflag) {
+        $larraysp = substr ($line, 19);
+        $larraycm = explode (",", $larraysp);
+        //if ($mobid == "Creature-0-5165-533-2104-15954-000061275C")
+        //  print_r ($larraycm);
+        if ($larraycm[0] == "SPELL_DAMAGE" && in_array ($larraycm[9], $spellarray) && $larraycm[5] == $mobid && $larraycm[35] == "1") {
+          $t2 = microtime (true);
+          $GLOBALS["gnd"] = $GLOBALS["gnd"] + ($t2 - $t1);
+          return Array ($larraycm, $newtstamp);
+        }
+      }
+      //if ($newtstamp == $tstamp)
+        //$tstampflag = true;
+    }
   }
 
   function checkforfive ($tstamp, $mobid) {
     $t1 = microtime (true);
-    //$wowlog = file ($GLOBALS["wowlogfile"]);
 
     $tstampflag = false;
     foreach ($GLOBALS["wowlog"] as $line) {
@@ -238,17 +322,16 @@
 
   function getdebufflevel ($mobid, $tstamp, $owner) {
     $t1 = microtime (true);
-    //$wowlog = file ($GLOBALS["wowlogfile"]);
     $tstampflag = false;
     foreach ($GLOBALS["wowlog"] as $line) {
       $tstamparray = explode (" ", $line);
       $newtstamp = $tstamparray[0] . " " . $tstamparray[1];
-      //print "comparing --$newtstamp-- to --$tstamp--\n";
 
       if ($tstampflag) {
-        //print "dbl comparing --$newtstamp-- to --$tstamp--\n";
         $larraysp = substr ($line, 19);
         $larraycm = explode (",", $larraysp);
+        //print_r ($larraycm);
+        //print "mobid = $mobid\n";
         if ($larraycm[0] == "SPELL_AURA_APPLIED" && $larraycm[9] == 12654 && trim ($larraycm[12]) == "DEBUFF" && $larraycm[5] == $mobid && $larraycm[1] == $owner) {
           $t2 = microtime (true);
           $GLOBALS["gdl"] = $GLOBALS["gdl"] + ($t2 - $t1);
@@ -260,11 +343,14 @@
           return Array (trim ($larraycm[13]), $newtstamp);
         }
       }
-      if ($newtstamp == $tstamp)
+      if ($newtstamp == $tstamp) {
         $tstampflag = true;
+        //print "comparing $newtstamp == $tstamp\n";
+      }
     }
     $t2 = microtime (true);
     $GLOBALS["gdl"] = $GLOBALS["gdl"] + ($t2 - $t1);
+    print "found nothing\n";
     return false;
   }
 
