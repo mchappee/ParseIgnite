@@ -32,8 +32,6 @@
       if (encounter_ends ($larraycm[1], $tstamp))
         $encounterflag = true;
         $boss = $larraycm[2];
-      //else
-      //  print "No ENCOUNTER_END for $larraycm[1]\n";
     }
     if ($larraycm[0] == "ENCOUNTER_END")
       $encounterflag = false;
