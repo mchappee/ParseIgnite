@@ -94,6 +94,8 @@
 
     foreach ($wowlog as $line) {
       $tstamparray = explode (" ", $line);
+      if (!isset ($tstamparray[1]))
+        die ("Not a valid combatlog\n");
       $tstamp = $tstamparray[0] . " " . $tstamparray[1];
       $larraysp = substr ($line, 19);
       $larraycm = explode (",", $larraysp);
