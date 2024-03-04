@@ -6,6 +6,8 @@
     public $owner;
     public $contributions;
     public $tick;
+    public $totalticks;
+    public $refresh;
   }
 
   class IgniteContrib {
