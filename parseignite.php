@@ -62,25 +62,34 @@
 
   include ("header.html");
   print "<pre>\n";
-  $fname = rand (1000000, 9999999) . ".txt";
-  $f = fopen ("reports/$fname", "w");
+  $r = rand (1000000, 9999999);
+  $tfname = $r . ".txt";
+  $jfname = $r . ".json";
+  $tf = fopen ("reports/$tfname", "w");
+
+  $jf = fopen ("reports/$jfname", "w");
+  fputs ($jf, json_encode ($ignitearray));
+  fclose ($jf);
 
   foreach ($ignitearray as $igniteobj) {
-    fputs ($f, "Boss: " . $igniteobj->mob . "\n");
-    fputs ($f, "Ignite Owner: " . $igniteobj->owner . "\n");
-    fputs ($f, "Total Ticks: " . $igniteobj->totalticks . "\n");
-    fputs ($f, "Tick Sampling: " . implode (",", $igniteobj->tick) . "\n");
-    fputs ($f, "Refreshes: " . $igniteobj->refresh . "\n");
-    fputs ($f, "Contributors:\n");
+    fputs ($tf, "Boss: " . $igniteobj->mob . "\n");
+    fputs ($tf, "Ignite Owner: " . $igniteobj->owner . "\n");
+    fputs ($tf, "Total Ticks: " . $igniteobj->totalticks . "\n");
+    fputs ($tf, "Tick Sampling: " . implode (",", $igniteobj->tick) . "\n");
+    fputs ($tf, "Refreshes: " . $igniteobj->refresh . "\n");
+    fputs ($tf, "Contributors:\n");
     foreach ($igniteobj->contributions as $contrib) {
-      fputs ($f, $contrib->contributor . "\t\t" . $contrib->spell . "\t\t" . $contrib->damage . "\n");
+      fputs ($tf, $contrib->contributor . "\t\t" . $contrib->spell . "\t\t" . $contrib->damage . "\n");
     }
-    fputs ($f, "\n");
+    fputs ($tf, "\n");
   }
 
-  fclose ($f);
-  print "This report can be referenced <a href=https://www.mattshouse.com/ignite/reports/$fname>here</a> in the future.\n\n";
-  include ("reports/" . $fname);
+  fclose ($tf);
+
+  print "This report can be referenced here in the future:\n";
+  print "<a href=https://www.mattshouse.com/ignite/reports/$tfname>$tfname</a> or <a href=https://www.mattshouse.com/ignite/reports/$jfname>$jfname</a>\n\n";
+
+  include ("reports/" . $tfname);
 
   print "GND = " . $GLOBALS["gnd"] . "\n";
   print "GDL = " . $GLOBALS["gdl"] . "\n";
