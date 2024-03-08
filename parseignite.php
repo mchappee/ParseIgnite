@@ -75,7 +75,10 @@
     fputs ($tf, "Boss: " . $igniteobj->mob . "\n");
     fputs ($tf, "Ignite Owner: " . $igniteobj->owner . "\n");
     fputs ($tf, "Total Ticks: " . $igniteobj->totalticks . "\n");
-    fputs ($tf, "Tick Sampling: " . implode (",", $igniteobj->tick) . "\n");
+    if ($igniteobj->tick)
+      fputs ($tf, "Tick Sampling: " . implode (",", $igniteobj->tick) . "\n");
+    else
+      fputs ($tf, "Tick Sampling: 0, 0, 0, 0\n");
     fputs ($tf, "Refreshes: " . $igniteobj->refresh . "\n");
     fputs ($tf, "Contributors:\n");
     foreach ($igniteobj->contributions as $contrib) {
@@ -151,6 +154,8 @@
 
       }
     }
+    //foreach ($trimlog as $line)
+    //  print $line;
     //print_r ($trimlog);
     //die ();
     return $trimlog;
@@ -163,15 +168,15 @@
     $ignite->mobid = $larray[5];
     $ignite->mob = $larray[6];
     $ignite->owner = $larray[2];
-
+    $level = 0;
+ 
     while ($level != 5) {
-      $ret = getdebufflevel ($ignite->mobid, $tstamp, $larray[1]);
-      $level = $ret[0];
-      //print "level = $level\n";
-      if ($level == 5) {
-        $ticks = calculateticks ($tstamp, $larray);
-        $ignite->tick = $ticks;
-      }
+      //$ret = getdebufflevel ($ignite->mobid, $tstamp, $larray[1]);
+      //if (!$ret)
+      //  return $ignite;
+
+      //$level = $ret[0];
+      //print "level = $level $ignite->mob $ignite->owner $ret[1]\n";
 
       $ignitecontrib = new IgniteContrib;
       $ignitecontrib->contributor = $larray[2];
@@ -179,12 +184,18 @@
       $ignitecontrib->damage = $larray[28];
 
       array_push ($ignite->contributions, $ignitecontrib);
-
-      $tstamp = advancelog ($ret[1]);
-
+      $tstamp = advancelog ($tstamp);
       $ret = getnewdamagelog ($tstamp, $spellarray, $ignite->mobid);
       $larray = $ret[0];
-      //$tstamp = $ret[1];
+      $level++;
+
+      if ($level == 5) {
+        //print "calticks $tstamp\n";
+        $ticks = calculateticks ($tstamp, $larray);
+        $ignite->tick = $ticks;
+      }
+
+      $tstamp = $ret[1];
       //print "----\n";
       //print_r ($larray);
     }
@@ -232,7 +243,7 @@
     foreach ($GLOBALS["wowlog"] as $line) {
       $tstamparray = explode (" ", $line);
       $newtstamp = $tstamparray[0] . " " . $tstamparray[1];
-
+//print "newstamp $newtstamp tstamp $tstamp\n";
       if ($tstampflag) {
         if ($tstamp != $newtstamp)
           return $newtstamp;
