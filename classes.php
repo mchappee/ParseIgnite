@@ -14,6 +14,7 @@
     public $contributor;
     public $spell;
     public $damage;
+    public $resist;
   }
 
 ?>

@@ -65,32 +65,62 @@
   $r = rand (1000000, 9999999);
   $tfname = $r . ".txt";
   $jfname = $r . ".json";
+  $hfname = $r . ".html";
+
   $tf = fopen ("reports/$tfname", "w");
+  $hf = fopen ("reports/$hfname", "w");
 
   $jf = fopen ("reports/$jfname", "w");
   fputs ($jf, json_encode ($ignitearray));
   fclose ($jf);
+  $currentboss = "";
+
+  $h = file_get_contents ("header.html");
+  fputs ($hf, $h . "<table border=0>\n");
 
   foreach ($ignitearray as $igniteobj) {
-    fputs ($tf, "Boss: " . $igniteobj->mob . "\n");
-    fputs ($tf, "Ignite Owner: " . $igniteobj->owner . "\n");
-    fputs ($tf, "Total Ticks: " . $igniteobj->totalticks . "\n");
-    if ($igniteobj->tick)
-      fputs ($tf, "Tick Sampling: " . implode (",", $igniteobj->tick) . "\n");
-    else
-      fputs ($tf, "Tick Sampling: 0, 0, 0, 0\n");
-    fputs ($tf, "Refreshes: " . $igniteobj->refresh . "\n");
-    fputs ($tf, "Contributors:\n");
-    foreach ($igniteobj->contributions as $contrib) {
-      fputs ($tf, $contrib->contributor . "\t\t" . $contrib->spell . "\t\t" . $contrib->damage . "\n");
+    if ($currentboss == $igniteobj->mobid) {
+      $tab = "\t";
+      fputs ($hf, "</td><td>\n");
+    } else {
+      $tab = "";
+      if ($currentboss != "")
+        fputs ($hf, "</tr>\n");
+      $currentboss = $igniteobj->mobid;
+      $skipheader = false;
+      fputs ($hf, "<tr><td><hr></td></tr><td>\n");
     }
+    fputs ($hf, "<table><tr><td><b> Boss: " . $igniteobj->mob . "</b></td></tr>\n"); 
+    fputs ($tf, "$tab Boss: " . $igniteobj->mob . "\n");
+    fputs ($hf, "<tr><td> Ignite Owner: " . $igniteobj->owner . "</td></tr>\n");
+    fputs ($tf, "$tab Ignite Owner: " . $igniteobj->owner . "\n");
+    fputs ($hf, "<tr><td> Total Ticks: " . $igniteobj->totalticks . "</td></tr>\n");
+    fputs ($tf, "$tab Total Ticks: " . $igniteobj->totalticks . "\n");
+    if ($igniteobj->tick) {
+      fputs ($hf, "<tr><td> Tick Sampling: " . implode (",", $igniteobj->tick) . "</td></tr>\n");
+      fputs ($tf, "$tab Tick Sampling: " . implode (",", $igniteobj->tick) . "\n");
+    } else {
+      fputs ($hf, "<tr><td> Tick Sampling: 0, 0, 0, 0</td></tr>\n");
+      fputs ($tf, "$tab Tick Sampling: 0, 0, 0, 0\n");
+    }
+    fputs ($hf, "<tr><td> Refreshes: " . $igniteobj->refresh . "</td></tr>\n");
+    fputs ($tf, "$tab Refreshes: " . $igniteobj->refresh . "\n");
+    fputs ($hf, "<tr><td> Contributors:</td></tr>\n");
+    fputs ($tf, "$tab Contributors:\n");
+    foreach ($igniteobj->contributions as $contrib) {
+      fputs ($hf, "<tr><td align=left>" . $contrib->contributor . "</td><td align=right>&nbsp&nbsp" . $contrib->spell . "</td><td align=right>&nbsp&nbsp" . $contrib->damage . "</td><td align=right>&nbsp&nbsp" . $contrib->resist . " resisted</td><td>&nbsp&nbsp&nbsp&nbsp</td></tr>\n");
+      fputs ($tf, $tab . $contrib->contributor . "\t" . $contrib->spell . "\t" . $contrib->damage . "\t" . $contrib->resist . " resisted\n");
+    }
+    fputs ($hf, "</table>");
     fputs ($tf, "\n");
   }
-
+  
+  fputs ($hf, "</tr></table>");
+  fclose ($hf);
   fclose ($tf);
 
   print "This report can be referenced here in the future:\n";
-  print "<a href=https://www.mattshouse.com/ignite/reports/$tfname>$tfname</a> or <a href=https://www.mattshouse.com/ignite/reports/$jfname>$jfname</a>\n\n";
+  print "<a href=https://www.mattshouse.com/ignite/reports/$hfname>$hfname</a> or <a href=https://www.mattshouse.com/ignite/reports/$tfname>$tfname</a> or <a href=https://www.mattshouse.com/ignite/reports/$jfname>$jfname</a>\n\n";
 
   include ("reports/" . $tfname);
 
@@ -182,6 +212,7 @@
       $ignitecontrib->contributor = $larray[2];
       $ignitecontrib->spell = $larray[10];
       $ignitecontrib->damage = $larray[28];
+      $ignitecontrib->resist = $larray[32];
 
       array_push ($ignite->contributions, $ignitecontrib);
       $tstamp = advancelog ($tstamp);
