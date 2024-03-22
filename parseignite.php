@@ -10,7 +10,7 @@
 
   $spellarray = Array (10207,10199,25306,18809,13021,10216, 10197);
   $wowlog = trimlog (file ($wowlogfile), $spellarray);
-  $namedbosses = Array ("\"Emperor Vek'lor\"", "\"Eye of C'Thun\"", "\"Princess Yauj\"", "\"Princess Yauj\"", "\"Lord Kri\"");
+  $namedbosses = Array ("\"Emperor Vek'lor\"", "\"Eye of C'Thun\"", "\"Princess Yauj\"", "\"Princess Yauj\"", "\"Lord Kri\"", "\"Highlord Mograine\"", "\"Sir Zeliek\"", "\"Thane Korth'azz\"", "\"Sir Zeliek\"");
   $ignite = Array ();
   $igniteflag = false;
   $iscrit = false;
@@ -90,25 +90,25 @@
       $skipheader = false;
       fputs ($hf, "<tr><td><hr></td></tr><td>\n");
     }
-    fputs ($hf, "<table><tr><td><b> Boss: " . $igniteobj->mob . "</b></td></tr>\n"); 
+    fputs ($hf, "<table><tr><td nowrap><b> Boss: " . $igniteobj->mob . "</b></td></tr>\n"); 
     fputs ($tf, "$tab Boss: " . $igniteobj->mob . "\n");
-    fputs ($hf, "<tr><td> Ignite Owner: " . $igniteobj->owner . "</td></tr>\n");
+    fputs ($hf, "<tr><td nowrap> Ignite Owner: " . $igniteobj->owner . "</td></tr>\n");
     fputs ($tf, "$tab Ignite Owner: " . $igniteobj->owner . "\n");
-    fputs ($hf, "<tr><td> Total Ticks: " . $igniteobj->totalticks . "</td></tr>\n");
+    fputs ($hf, "<tr><td nowrap> Total Ticks: " . $igniteobj->totalticks . "</td></tr>\n");
     fputs ($tf, "$tab Total Ticks: " . $igniteobj->totalticks . "\n");
     if ($igniteobj->tick) {
-      fputs ($hf, "<tr><td> Tick Sampling: " . implode (",", $igniteobj->tick) . "</td></tr>\n");
+      fputs ($hf, "<tr><td nowrap> Tick Sampling: " . implode (",", $igniteobj->tick) . "</td></tr>\n");
       fputs ($tf, "$tab Tick Sampling: " . implode (",", $igniteobj->tick) . "\n");
     } else {
-      fputs ($hf, "<tr><td> Tick Sampling: 0, 0, 0, 0</td></tr>\n");
+      fputs ($hf, "<tr><td nowrap> Tick Sampling: 0, 0, 0, 0</td></tr>\n");
       fputs ($tf, "$tab Tick Sampling: 0, 0, 0, 0\n");
     }
-    fputs ($hf, "<tr><td> Refreshes: " . $igniteobj->refresh . "</td></tr>\n");
+    fputs ($hf, "<tr><td nowrap> Refreshes: " . $igniteobj->refresh . "</td></tr>\n");
     fputs ($tf, "$tab Refreshes: " . $igniteobj->refresh . "\n");
-    fputs ($hf, "<tr><td> Contributors:</td></tr>\n");
+    fputs ($hf, "<tr><td nowrap> Contributors:</td></tr>\n");
     fputs ($tf, "$tab Contributors:\n");
     foreach ($igniteobj->contributions as $contrib) {
-      fputs ($hf, "<tr><td align=left>" . $contrib->contributor . "</td><td align=right>&nbsp&nbsp" . $contrib->spell . "</td><td align=right>&nbsp&nbsp" . $contrib->damage . "</td><td align=right>&nbsp&nbsp" . $contrib->resist . " resisted</td><td>&nbsp&nbsp&nbsp&nbsp</td></tr>\n");
+      fputs ($hf, "<tr><td align=left nowrap>" . $contrib->contributor . "</td><td align=right nowrap>&nbsp&nbsp" . $contrib->spell . "</td><td align=right nowrap>&nbsp&nbsp" . $contrib->damage . "</td><td align=right nowrap>&nbsp&nbsp" . $contrib->resist . " resisted</td><td nowrap>&nbsp&nbsp&nbsp&nbsp</td></tr>\n");
       fputs ($tf, $tab . $contrib->contributor . "\t" . $contrib->spell . "\t" . $contrib->damage . "\t" . $contrib->resist . " resisted\n");
     }
     fputs ($hf, "</table>");
